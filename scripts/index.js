@@ -18,22 +18,33 @@ $(function () {
             for (let shape in shapes) {
                 shapesArray.push(MakeShapeObject(shape))
             }
-            function Draw(shapeobj, location) {
+            function Draw(shapeobj, offset) {
                 context.fillStyle = "#000"
                 context.fillRect(0, 0, canvas.width, canvas.height)
 
                 const { w, h, x, y } = shapeobj.frame;
-                context.drawImage(image, x, y, w, h, location.x, location.y, w, h);
+                context.drawImage(image, x, y, w, h, offset.x, offset.y, w, h);
             }
+            let offset = {
+                x: 20,
+                y: 20
+            }
+            let dropCounter = 0;
+            let dropInterval = 1000;
+            let lasttime = 0
+            function update(time = 0) {
+                const deltaTime = time - lasttime;
+                lasttime = time;
+                dropCounter += deltaTime;
+                if (dropCounter > dropInterval) {
+                    dropCounter = 0;
+                    offset.y += 30;
+                }
 
-            function update() {
-                Draw(shapes["animal_deer.png"], location);
+                Draw(shapes["animal_elephant.png"], offset);
                 requestAnimationFrame(update);
             }
-            let location = {
-                x: 10,
-                y: 10
-            }
+
             update()
             function MakeShapeObject(shape) {
                 switch (shape) {
