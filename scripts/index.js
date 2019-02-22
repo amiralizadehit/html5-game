@@ -31,6 +31,7 @@ $(function() {
           y: 0,
           e: horizontalMargin
         };
+        this.rotation = 0;
         this.id = "";
       }
       function Blockobject() {
@@ -45,17 +46,39 @@ $(function() {
       function DrawGameobject(gameObject) {
         const { width, height, xPos, yPos } = gameObject.frame;
         const { x, y, e } = gameObject.offset;
-        context.drawImage(
-          image,
-          xPos,
-          yPos,
-          width,
-          height,
-          x + e,
-          y,
-          width,
-          height
-        );
+        //console.log(x);
+        let rotation = gameObject.rotation;
+        if (rotation !== 0) {
+          let margin = (blockSize * gameObject.matrix.length) / 2;
+          context.save();
+          context.translate(x + margin, y + margin);
+          context.rotate((rotation * Math.PI) / 180);
+          context.drawImage(
+            image,
+            xPos,
+            yPos,
+            width,
+            height,
+            -margin + e,
+            -margin,
+            width,
+            height
+          );
+          context.translate(-(x + margin), -(y + margin));
+          context.restore();
+        } else {
+          context.drawImage(
+            image,
+            xPos,
+            yPos,
+            width,
+            height,
+            x + e,
+            y,
+            width,
+            height
+          );
+        }
       }
 
       const playField = CreateMatrix(8, 14);
@@ -194,7 +217,24 @@ $(function() {
 
       function Rotate(dir) {
         shapeMatrix = currentObject.matrix;
-        for (let y = 0; y < shapeMatrix.length; y++) {}
+        console.table(shapeMatrix);
+        for (let y = 0; y < shapeMatrix.length; ++y) {
+          for (let x = 0; x < y; ++x) {
+            [shapeMatrix[x][y], shapeMatrix[y][x]] = [
+              shapeMatrix[y][x],
+              shapeMatrix[x][y]
+            ];
+          }
+        }
+
+        if (dir > 0) {
+          currentObject.rotation += 90;
+          shapeMatrix.forEach(row => row.reverse());
+        } else {
+          currentObject.rotation -= 90;
+          shapeMatrix.reverse();
+        }
+        console.table(shapeMatrix);
       }
 
       function GetObjectMatrix(shape) {
@@ -243,6 +283,10 @@ $(function() {
           PlayerMove(1);
         } else if (event.keyCode === 40) {
           PlayerDrop();
+        } else if (event.keyCode === 81) {
+          Rotate(-1);
+        } else if (event.keyCode === 87) {
+          Rotate(1);
         }
       });
     };
