@@ -10,86 +10,97 @@ $(function() {
   $.getJSON("../assets/asset.json", function(json) {
     let image = new Image();
     image.onload = function() {
-      let gameObjects = []; //to keep track of all the possible gameobjects
+      let shapeArray = []; //to keep track of all the possible gameobjects
+      let registeredObjects = []; //to keep track of all the gameobjects in the scene
       let currentObject = {}; //to keep track of the fired gameobject
-
+      let blockSize = 30;
       let shapes = json.frames;
 
-      for (let shape in shapes) {
+      function Gameobject(shape) {
         const { w, h, x, y } = shapes[shape].frame;
-        let gameobject = {
-          matrix: GetObjectMatrix(shape),
-          frame: {
-            width: w,
-            height: h,
-            xPos: x,
-            yPos: y
-          },
-          offset: {
-            x: 0,
-            y: 0
-          },
-          id: "" //Generated when firing
+        this.matrix = GetObjectMatrix(shape);
+        let horizontalMargin = GetHorizontalMargin(shape);
+        this.frame = {
+          width: w,
+          height: h,
+          xPos: x,
+          yPos: y
         };
-        gameObjects.push(gameobject);
+        this.offset = {
+          x: 0,
+          y: 0,
+          e: horizontalMargin
+        };
+        this.id = "";
+      }
+      function Blockobject() {
+        this.value = 0;
+        this.id = "";
       }
 
-      function Draw(gameObject) {
-        context.fillStyle = "#000";
-        context.fillRect(0, 0, canvas.width, canvas.height);
+      for (let shape in shapes) {
+        shapeArray.push(shape);
+      }
 
+      function DrawGameobject(gameObject) {
         const { width, height, xPos, yPos } = gameObject.frame;
-        const { x, y } = gameObject.offset;
+        const { x, y, e } = gameObject.offset;
         context.drawImage(
           image,
           xPos,
           yPos,
           width,
           height,
-          x,
+          x + e,
           y,
           width,
           height
         );
       }
 
-      const playField = CreateMatrix(12, 21);
+      const playField = CreateMatrix(8, 14);
 
       function CreateMatrix(w, h) {
         const matrix = [];
         while (h--) {
-          let blockObj = {
-            value: 0, //all blocks are empty at the beginning
-            id: "" //this is going to be replaced by the id of the gameobject this block is part of
-          };
-          matrix.push(new Array(w).fill(blockObj));
+          let row = new Array(w);
+          for (let i = 0; i < w; i++) {
+            row[i] = new Blockobject();
+          }
+          matrix.push(row);
         }
+
         return matrix;
       }
-      function Merge(playField) {
+      function Merge() {
         let shapeMatrix = currentObject.matrix;
+
         shapeMatrix.forEach((row, y) => {
           row.forEach((value, x) => {
             if (value !== 0) {
-              playField[y + currentObject.offset.y / 30][
-                x + currentObject.offset.x / 30
+              playField[y + currentObject.offset.y / blockSize][
+                x + currentObject.offset.x / blockSize
               ].value = value;
-              playField[y + currentObject.offset.y / 30][
-                x + currentObject.offset.x / 30
+              playField[y + currentObject.offset.y / blockSize][
+                x + currentObject.offset.x / blockSize
               ].id = currentObject.id;
             }
           });
         });
       }
-      function Collide(shapeMatrix) {
+      function Collide() {
+        let shapeMatrix = currentObject.matrix;
         for (let y = 0; y < shapeMatrix.length; y++) {
           for (let x = 0; x < shapeMatrix[y].length; x++) {
             if (
               shapeMatrix[y][x] !== 0 &&
-              (playField[y + currentObject.offset.y / 30] &&
-                playField[y + currentObject.offset.y / 30][
-                  x + currentObject.offset.x / 30
-                ]) !== 0
+              (playField[y + currentObject.offset.y / blockSize] &&
+                playField[y + currentObject.offset.y / blockSize][
+                  x + currentObject.offset.x / blockSize
+                ] &&
+                playField[y + currentObject.offset.y / blockSize][
+                  x + currentObject.offset.x / blockSize
+                ].value) !== 0
             ) {
               return true;
             }
@@ -99,11 +110,17 @@ $(function() {
       }
 
       window["Merge"] = Merge; //temp
-      window["gameObjects"] = gameObjects; //temp
+      //window["gameObjects"] = gameObjects; //temp
       window["playField"] = playField; //temp
 
       function PlayerDrop() {
-        currentObject.offset.y += 30;
+        currentObject.offset.y += blockSize;
+        if (Collide()) {
+          currentObject.offset.y -= blockSize;
+          Merge();
+          SpawnGameobject();
+          //currentObject.offset.y = 0;
+        }
         dropCounter = 0;
       }
 
@@ -117,19 +134,69 @@ $(function() {
         if (dropCounter > dropInterval) {
           PlayerDrop();
         }
+        Draw();
+        //
+        //let test = GetGameobjectById(currentObject.id);
 
-        Draw(gameObjects[0]);
         requestAnimationFrame(update);
       }
-      currentObject = gameObjects[0];
-      currentObject.id = Math.random()
-        .toString(36)
-        .substring(7);
-      console.log(currentObject);
+
+      function SpawnGameobject() {
+        let random = Math.floor(Math.random() * Math.floor(shapeArray.length));
+        currentObject = new Gameobject(shapeArray[random]);
+        let newId = Math.random()
+          .toString(36)
+          .substring(7);
+        currentObject.id = newId;
+        RegisterObject(newId);
+      }
 
       window["currentObj"] = currentObject; //temp
-
+      SpawnGameobject();
       update();
+
+      function Draw() {
+        context.fillStyle = "#000";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        DrawScene();
+        DrawGameobject(currentObject);
+      }
+
+      function RegisterObject(newId) {
+        let object = new Object();
+        object[newId] = currentObject;
+        registeredObjects.push(object);
+      }
+
+      function GetGameobjectById(id) {
+        let result = {};
+        registeredObjects.forEach((value, index) => {
+          if (value.hasOwnProperty(id)) {
+            result = value[id];
+          }
+        });
+        return result;
+      }
+      // window["GetGameobjectById"] = GetGameobjectById;
+      window["registeredObjects"] = registeredObjects;
+
+      function DrawScene() {
+        playField.forEach((row, y) => {
+          row.forEach((block, x) => {
+            if (block.value !== 0) {
+              let id = block.id;
+              let gameObject = GetGameobjectById(id);
+              DrawGameobject(gameObject);
+            }
+          });
+        });
+      }
+
+      function Rotate(dir) {
+        shapeMatrix = currentObject.matrix;
+        for (let y = 0; y < shapeMatrix.length; y++) {}
+      }
+
       function GetObjectMatrix(shape) {
         switch (shape) {
           case "animal_deer.png":
@@ -139,7 +206,7 @@ $(function() {
             return [[2]];
 
           case "animal_crocodile.png":
-            return [[0, 0], [3, 3]];
+            return [[3, 3], [0, 0]];
 
           case "animal_elephant.png":
             return [[4, 4], [4, 4]];
@@ -157,11 +224,23 @@ $(function() {
             return [[8]];
         }
       }
+      function GetHorizontalMargin(shape) {
+        if (shape === "animal_girafe.png") return blockSize;
+        return 0;
+      }
+
+      function PlayerMove(dir) {
+        currentObject.offset.x += dir * blockSize;
+        if (Collide()) {
+          currentObject.offset.x -= dir * blockSize;
+        }
+      }
+
       document.addEventListener("keydown", event => {
         if (event.keyCode === 37) {
-          currentObject.offset.x -= 30;
+          PlayerMove(-1);
         } else if (event.keyCode === 39) {
-          currentObject.offset.x += 30;
+          PlayerMove(1);
         } else if (event.keyCode === 40) {
           PlayerDrop();
         }
