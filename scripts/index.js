@@ -5,17 +5,27 @@ $(function() {
   var ch = canvas.height;
 
   context.fillStyle = "#000";
+  //context.scale(1.5, 1.5);
   context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.fillStyle = "white";
+  context.textAlign = "center";
+  context.font = "20px Arial";
+  context.fillText("Press P to start", cw / 2, ch / 2);
 
   $.getJSON("./assets/asset.json", function(json) {
     let image = new Image();
+    let audio = new Audio("./music/music.ogg");
+    audio.loop = true;
     image.onload = function() {
       let shapeArray = []; //to keep track of all the possible gameobjects
       let registeredObjects = []; //to keep track of all the gameobjects in the scene
       let currentObject = {}; //to keep track of the fired gameobject
       let blockSize = 30;
+      let playerScore = 0;
       let shapes = json.frames;
-      let playField = CreateMatrix(8, 14);
+      let isPause = true;
+      let playField = CreateMatrix(10, 16);
 
       function Gameobject(shape) {
         const { w, h, x, y } = shapes[shape].frame;
@@ -46,7 +56,7 @@ $(function() {
           yPos: y
         };
         this.offset = {
-          x: 0,
+          x: cw / 2 - blockSize,
           y: 0,
           e: horizontalMargin
         };
@@ -64,6 +74,11 @@ $(function() {
 
       for (let shape in shapes) {
         shapeArray.push(shape);
+      }
+
+      function UpdateScore(unit) {
+        playerScore += unit * 10;
+        document.getElementById("score").innerText = playerScore;
       }
 
       function DrawGameobject(gameObject) {
@@ -153,10 +168,6 @@ $(function() {
         return false;
       }
 
-      window["Merge"] = Merge; //temp
-      //window["gameObjects"] = gameObjects; //temp
-      window["playField"] = playField; //temp
-
       function PlayerDrop() {
         currentObject.offset.y += blockSize;
         if (Collide(currentObject)) {
@@ -172,19 +183,18 @@ $(function() {
       }
 
       let dropCounter = 0;
-      let dropInterval = 1000;
+      let dropInterval = 500;
       let lasttime = 0;
       function update(time = 0) {
-        const deltaTime = time - lasttime;
-        lasttime = time;
-        dropCounter += deltaTime;
-        if (dropCounter > dropInterval) {
-          PlayerDrop();
+        if (!isPause) {
+          const deltaTime = time - lasttime;
+          lasttime = time;
+          dropCounter += deltaTime;
+          if (dropCounter > dropInterval) {
+            PlayerDrop();
+          }
+          Draw();
         }
-        Draw();
-        //
-        //let test = GetGameobjectById(currentObject.id);
-
         requestAnimationFrame(update);
       }
 
@@ -268,11 +278,11 @@ $(function() {
             aboveObj.belowItems.splice(index, 1); //Removing this object from above objects' belowItems
             aboveObj.move();
           });
-
+          UpdateScore(0.5);
           //We won't render them again
-          // registeredObjects = registeredObjects.filter(
-          // value => !value.hasOwnProperty(id)
-          //);
+          registeredObjects = registeredObjects.filter(
+            value => !value.hasOwnProperty(id)
+          );
         });
       }
 
@@ -302,13 +312,22 @@ $(function() {
         RegisterObject(newId);
       }
 
-      window["currentObj"] = currentObject; //temp
       SpawnGameobject();
+      // PlayAudio();
       update();
+
+      function PlayAudio() {
+        audio.play();
+      }
+      function StopAudio() {
+        audio.pause();
+      }
 
       function Restart() {
         registeredObjects = [];
-        playField = CreateMatrix(8, 14);
+        playField = CreateMatrix(10, 16);
+        playerScore = 0;
+        document.getElementById("score").innerText = 0;
       }
 
       function Draw() {
@@ -423,6 +442,18 @@ $(function() {
           currentObject.offset.x -= dir * blockSize;
         }
       }
+      function Pause() {
+        isPause = true;
+        StopAudio();
+        context.fillStyle = "white";
+        context.textAlign = "center";
+        context.font = "20px Arial";
+        context.fillText("Pause", cw / 2, ch / 2);
+      }
+      function Resume() {
+        audio.play();
+        isPause = false;
+      }
 
       document.addEventListener("keydown", event => {
         if (event.keyCode === 37) {
@@ -435,6 +466,9 @@ $(function() {
           PlayerRotate(-1);
         } else if (event.keyCode === 87) {
           PlayerRotate(1);
+        } else if (event.keyCode === 80) {
+          if (isPause) Resume();
+          else Pause();
         }
       });
     };

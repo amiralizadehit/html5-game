@@ -5,10 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Game</title>
+    <style>
+      body {
+        background: #202028;
+        color: #fff;
+        font-family: sans-serif;
+        text-align: center;
+      }
+      canvas {
+        border: solid 0.2em #fff;
+      }
+    </style>
   </head>
 
   <body>
-    <canvas id="tetris" width="240" height="420"></canvas>
+    <div style="font-size: 40px ; margin-bottom: 10px">Save The Animal!</div>
+    <div style="font-size: 30px" id="score">0</div>
+
+    <canvas
+      id="tetris"
+      style="margin-bottom: 10px"
+      width="300"
+      height="480"
+    ></canvas>
+
+    <div style="font-size: 20px; margin-bottom: 10px" id="score">
+      Rotate = W/Q
+    </div>
+    <div style="font-size: 20px; margin-bottom: 10px" id="score">
+      Pause = P
+    </div>
+    <div style="font-size: 15px" id="score">
+      Pac Game Studio Assignment - 2019
+    </div>
 
     <script src="./static/jquery-3.3.1.min.js"></script>
     <script src="./scripts/index.js"></script>
