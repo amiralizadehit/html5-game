@@ -15,6 +15,7 @@ $(function() {
       let currentObject = {}; //to keep track of the fired gameobject
       let blockSize = 30;
       let shapes = json.frames;
+      let playField = CreateMatrix(8, 14);
 
       function Gameobject(shape) {
         const { w, h, x, y } = shapes[shape].frame;
@@ -81,8 +82,6 @@ $(function() {
         }
       }
 
-      const playField = CreateMatrix(8, 14);
-
       function CreateMatrix(w, h) {
         const matrix = [];
         while (h--) {
@@ -141,6 +140,7 @@ $(function() {
         if (Collide()) {
           currentObject.offset.y -= blockSize;
           Merge();
+          CheckForSimilar();
           SpawnGameobject();
           //currentObject.offset.y = 0;
         }
@@ -164,9 +164,81 @@ $(function() {
         requestAnimationFrame(update);
       }
 
+      function CheckForSimilar() {
+        let items = [];
+        let selfId = "";
+        let itemsToRemove = [];
+        let shapeMatrix = currentObject.matrix;
+        let offY = currentObject.offset.y / blockSize;
+        let offX = currentObject.offset.x / blockSize;
+        for (let y = 0; y < shapeMatrix.length; y++) {
+          for (let x = 0; x < shapeMatrix[y].length; x++) {
+            if (shapeMatrix[y][x] !== 0) {
+              let selfValue = shapeMatrix[y][x];
+              selfId = playField[y + offY][x + offX].id;
+
+              let up = playField[y + offY - 1]
+                ? playField[y + offY - 1][x + offX]
+                : false;
+              let right = playField[y + offY][x + offX + 1]
+                ? playField[y + offY][x + offX + 1]
+                : false;
+              let down = playField[y + offY + 1]
+                ? playField[y + offY + 1][x + offX]
+                : false;
+              let left = playField[y + offY][x + offX - 1]
+                ? playField[y + offY][x + offX - 1]
+                : false;
+              //console.log(down);
+              if (up && up.value === selfValue && up.id !== selfId) {
+                items.push(up.id);
+              }
+              if (right && right.value === selfValue && right.id !== selfId) {
+                items.push(right.id);
+              }
+              if (down && down.value === selfValue && down.id !== selfId) {
+                items.push(down.id);
+              }
+              if (left && left.value === selfValue && left.id !== selfId) {
+                items.push(left.id);
+              }
+            }
+          }
+        }
+        $.each(items, function(i, el) {
+          if ($.inArray(el, itemsToRemove) === -1) itemsToRemove.push(el);
+        });
+        if (itemsToRemove.length > 0) itemsToRemove.push(selfId); //we add the object itself to the list when we have at least one item in the list.
+        RemoveElements(itemsToRemove);
+      }
+
+      function RemoveElements(items) {
+        items.forEach(id => {
+          //We won't render them again
+          const gameObject = GetGameobjectById(id);
+          const shapeMatrix = gameObject.matrix;
+          const { x: offX, y: offY } = gameObject.offset;
+          shapeMatrix.forEach((row, y) => {
+            row.forEach((value, x) => {
+              if (shapeMatrix[y][x] !== 0)
+                playField[y + offY / blockSize][
+                  x + offX / blockSize
+                ] = new Blockobject();
+            });
+          });
+
+          registeredObjects = registeredObjects.filter(
+            value => !value.hasOwnProperty(id)
+          );
+        });
+      }
+
       function SpawnGameobject() {
         let random = Math.floor(Math.random() * Math.floor(shapeArray.length));
         currentObject = new Gameobject(shapeArray[random]);
+        if (Collide()) {
+          Restart();
+        }
         let newId = Math.random()
           .toString(36)
           .substring(7);
@@ -177,6 +249,11 @@ $(function() {
       window["currentObj"] = currentObject; //temp
       SpawnGameobject();
       update();
+
+      function Restart() {
+        registeredObjects = [];
+        playField = CreateMatrix(8, 14);
+      }
 
       function Draw() {
         context.fillStyle = "#000";
@@ -192,7 +269,7 @@ $(function() {
       }
 
       function GetGameobjectById(id) {
-        let result = {};
+        let result = null;
         registeredObjects.forEach((value, index) => {
           if (value.hasOwnProperty(id)) {
             result = value[id];
@@ -209,15 +286,31 @@ $(function() {
             if (block.value !== 0) {
               let id = block.id;
               let gameObject = GetGameobjectById(id);
-              DrawGameobject(gameObject);
+              if (gameObject) {
+                DrawGameobject(gameObject);
+              }
             }
           });
         });
       }
 
+      function PlayerRotate(dir) {
+        let pos = currentObject.matrix.x;
+        let offset = blockSize;
+        Rotate(dir);
+        while (Collide()) {
+          currentObject.offset.x += offset;
+          offset = -(offset + (offset > 0 ? blockSize : -blockSize));
+          if (offset > currentObject.matrix[0].length * blockSize) {
+            Rotate(-dir);
+            currentObject.offset.x = pos;
+            return;
+          }
+        }
+      }
+
       function Rotate(dir) {
         shapeMatrix = currentObject.matrix;
-        console.table(shapeMatrix);
         for (let y = 0; y < shapeMatrix.length; ++y) {
           for (let x = 0; x < y; ++x) {
             [shapeMatrix[x][y], shapeMatrix[y][x]] = [
@@ -234,7 +327,6 @@ $(function() {
           currentObject.rotation -= 90;
           shapeMatrix.reverse();
         }
-        console.table(shapeMatrix);
       }
 
       function GetObjectMatrix(shape) {
@@ -284,9 +376,9 @@ $(function() {
         } else if (event.keyCode === 40) {
           PlayerDrop();
         } else if (event.keyCode === 81) {
-          Rotate(-1);
+          PlayerRotate(-1);
         } else if (event.keyCode === 87) {
-          Rotate(1);
+          PlayerRotate(1);
         }
       });
     };
