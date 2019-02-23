@@ -7,7 +7,7 @@ $(function() {
   context.fillStyle = "#000";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  $.getJSON("../assets/asset.json", function(json) {
+  $.getJSON("./assets/asset.json", function(json) {
     let image = new Image();
     image.onload = function() {
       let shapeArray = []; //to keep track of all the possible gameobjects
@@ -21,6 +21,9 @@ $(function() {
         const { w, h, x, y } = shapes[shape].frame;
         this.matrix = GetObjectMatrix(shape);
         let horizontalMargin = GetHorizontalMargin(shape);
+        this.move = function(unit) {
+          console.log(this.belowItems);
+        };
         this.frame = {
           width: w,
           height: h,
@@ -33,6 +36,10 @@ $(function() {
           e: horizontalMargin
         };
         this.rotation = 0;
+
+        this.belowItems = [];
+        this.aboveItems = [];
+
         this.id = "";
       }
       function Blockobject() {
@@ -141,7 +148,9 @@ $(function() {
           currentObject.offset.y -= blockSize;
           Merge();
           CheckForSimilar();
+
           SpawnGameobject();
+
           //currentObject.offset.y = 0;
         }
         dropCounter = 0;
@@ -196,8 +205,15 @@ $(function() {
               if (right && right.value === selfValue && right.id !== selfId) {
                 items.push(right.id);
               }
-              if (down && down.value === selfValue && down.id !== selfId) {
-                items.push(down.id);
+              if (down && down.id !== selfId) {
+                if (down.value === selfValue) items.push(down.id);
+                else if (down.value !== selfValue && down.value !== 0) {
+                  if (currentObject.belowItems.indexOf(down.id) === -1)
+                    currentObject.belowItems.push(down.id); //we add Id of below object
+                  let belowObj = GetGameobjectById(down.id);
+                  if (belowObj.aboveItems.indexOf(selfId) === -1)
+                    belowObj.aboveItems.push(selfId);
+                }
               }
               if (left && left.value === selfValue && left.id !== selfId) {
                 items.push(left.id);
@@ -214,22 +230,40 @@ $(function() {
 
       function RemoveElements(items) {
         items.forEach(id => {
-          //We won't render them again
+          //Cleaning up the play field
           const gameObject = GetGameobjectById(id);
-          const shapeMatrix = gameObject.matrix;
-          const { x: offX, y: offY } = gameObject.offset;
-          shapeMatrix.forEach((row, y) => {
-            row.forEach((value, x) => {
-              if (shapeMatrix[y][x] !== 0)
-                playField[y + offY / blockSize][
-                  x + offX / blockSize
-                ] = new Blockobject();
-            });
+          CleanElementPlayField(gameObject);
+
+          gameObject.belowItems.forEach((value, i) => {
+            let belowObj = GetGameobjectById(value);
+            let index = belowObj.aboveItems.indexOf(id);
+            belowObj.aboveItems.splice(index, 1); //Removing this object from below objects' aboveItems
           });
 
+          gameObject.aboveItems.forEach((value, i) => {
+            let aboveObj = GetGameobjectById(value);
+            let index = aboveObj.belowItems.indexOf(id);
+            aboveObj.belowItems.splice(index, 1); //Removing this object from above objects' belowItems
+            aboveObj.move(2);
+          });
+
+          //We won't render them again
           registeredObjects = registeredObjects.filter(
             value => !value.hasOwnProperty(id)
           );
+        });
+      }
+
+      function CleanElementPlayField(gameObject) {
+        const shapeMatrix = gameObject.matrix;
+        const { x: offX, y: offY } = gameObject.offset;
+        shapeMatrix.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (shapeMatrix[y][x] !== 0)
+              playField[y + offY / blockSize][
+                x + offX / blockSize
+              ] = new Blockobject();
+          });
         });
       }
 
