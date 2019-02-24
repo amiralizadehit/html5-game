@@ -272,20 +272,26 @@ $(function() {
         items.forEach(id => {
           //Cleaning up the play field
           const gameObject = GetGameobjectById(id);
-          if (gameObject !== null) CleanElementPlayField(gameObject);
+          if (gameObject !== null) {
+            CleanElementPlayField(gameObject);
 
-          gameObject.belowItems.forEach((value, i) => {
-            let belowObj = GetGameobjectById(value);
-            let index = belowObj.aboveItems.indexOf(id);
-            belowObj.aboveItems.splice(index, 1); //Removing this object from below objects' aboveItems
-          });
+            gameObject.belowItems.forEach((value, i) => {
+              let belowObj = GetGameobjectById(value);
+              if (belowObj !== null) {
+                let index = belowObj.aboveItems.indexOf(id);
+                belowObj.aboveItems.splice(index, 1); //Removing this object from below objects' aboveItems
+              }
+            });
+            gameObject.aboveItems.forEach((value, i) => {
+              let aboveObj = GetGameobjectById(value);
+              if (aboveObj !== null) {
+                let index = aboveObj.belowItems.indexOf(id);
+                aboveObj.belowItems.splice(index, 1); //Removing this object from above objects' belowItems
+                aboveObj.move();
+              }
+            });
+          }
 
-          gameObject.aboveItems.forEach((value, i) => {
-            let aboveObj = GetGameobjectById(value);
-            let index = aboveObj.belowItems.indexOf(id);
-            aboveObj.belowItems.splice(index, 1); //Removing this object from above objects' belowItems
-            aboveObj.move();
-          });
           UpdateScore(0.5);
           //We won't render them again
           registeredObjects = registeredObjects.filter(
