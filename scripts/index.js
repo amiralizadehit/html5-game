@@ -1,12 +1,18 @@
 $(function() {
   const canvas = document.getElementById("tetris");
+  const preshow = document.getElementById("preshow");
   var context = canvas.getContext("2d");
+  var preshow_ctx = preshow.getContext("2d");
   var cw = canvas.width;
   var ch = canvas.height;
+  var cwp = preshow_ctx.width;
+  var chp = preshow_ctx.height;
 
   context.fillStyle = "#000";
+  preshow_ctx.fillStyle = "#000";
   //context.scale(1.5, 1.5);
   context.fillRect(0, 0, canvas.width, canvas.height);
+  preshow_ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   context.fillStyle = "white";
   context.textAlign = "center";
@@ -21,9 +27,10 @@ $(function() {
       let shapeArray = []; //to keep track of all the possible gameobjects
       let registeredObjects = []; //to keep track of all the gameobjects in the scene
       let currentObject = {}; //to keep track of the fired gameobject
+      let shapes = json.frames;
       let blockSize = 30;
       let playerScore = 0;
-      let shapes = json.frames;
+      let random = -1;
       let isPause = true;
       let playField = CreateMatrix(10, 16);
 
@@ -41,7 +48,6 @@ $(function() {
             Merge(this);
             CheckForSimilar(this);
             this.aboveItems.forEach(item => {
-              console.log(this.aboveItems);
               let aboveObj = GetGameobjectById(item);
               let index = aboveObj.belowItems.indexOf(this.id);
               aboveObj.belowItems.splice(index, 1);
@@ -300,8 +306,16 @@ $(function() {
       }
 
       function SpawnGameobject() {
-        let random = Math.floor(Math.random() * Math.floor(shapeArray.length));
-        currentObject = new Gameobject(shapeArray[random]);
+        if (random === -1) {
+          random = Math.floor(Math.random() * Math.floor(shapeArray.length));
+          currentObject = new Gameobject(shapeArray[random]);
+        } else {
+          currentObject = new Gameobject(shapeArray[random]);
+        }
+
+        random = Math.floor(Math.random() * Math.floor(shapeArray.length));
+        Preshow();
+
         if (Collide(currentObject)) {
           Restart();
         }
@@ -313,8 +327,15 @@ $(function() {
       }
 
       SpawnGameobject();
-      // PlayAudio();
+
       update();
+
+      function Preshow() {
+        preshow_ctx.fillStyle = "#000";
+        preshow_ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const { w, h, x, y } = shapes[shapeArray[random]].frame;
+        preshow_ctx.drawImage(image, x, y, w, h, 0, 0, w, h);
+      }
 
       function PlayAudio() {
         audio.play();
@@ -451,7 +472,7 @@ $(function() {
         context.fillText("Pause", cw / 2, ch / 2);
       }
       function Resume() {
-        audio.play();
+        PlayAudio();
         isPause = false;
       }
 
