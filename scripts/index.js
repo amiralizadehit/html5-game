@@ -49,9 +49,11 @@ $(function() {
             CheckForSimilar(this);
             this.aboveItems.forEach(item => {
               let aboveObj = GetGameobjectById(item);
-              let index = aboveObj.belowItems.indexOf(this.id);
-              aboveObj.belowItems.splice(index, 1);
-              aboveObj.move();
+              if (aboveObj !== null) {
+                let index = aboveObj.belowItems.indexOf(this.id);
+                aboveObj.belowItems.splice(index, 1);
+                aboveObj.move();
+              }
             });
           }
         };
@@ -270,7 +272,7 @@ $(function() {
         items.forEach(id => {
           //Cleaning up the play field
           const gameObject = GetGameobjectById(id);
-          CleanElementPlayField(gameObject);
+          if (gameObject !== null) CleanElementPlayField(gameObject);
 
           gameObject.belowItems.forEach((value, i) => {
             let belowObj = GetGameobjectById(value);
